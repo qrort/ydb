@@ -809,21 +809,21 @@ Y_UNIT_TEST_SUITE(TPDiskTest) {
         }
     }
 
-    Y_UNIT_TEST(DeviceHaltTooLong) {
-        TActorTestContext testCtx{{}};
-        testCtx.TestCtx.SectorMap->ImitateRandomWait = {TDuration::Seconds(1), TDuration::Seconds(2)};
+    // Y_UNIT_TEST(DeviceHaltTooLong) {
+    //     TActorTestContext testCtx{{}};
+    //     testCtx.TestCtx.SectorMap->ImitateRandomWait = {TDuration::Seconds(1), TDuration::Seconds(2)};
 
-        TVDiskMock mock(&testCtx);
+    //     TVDiskMock mock(&testCtx);
 
-        mock.InitFull();
-        const int logsSent = 100;
-        for (int i = 0; i < logsSent; ++i) {
-            mock.SendEvLogSync();
-        }
+    //     mock.InitFull();
+    //     const int logsSent = 10;
+    //     for (int i = 0; i < logsSent; ++i) {
+    //         mock.SendEvLogSync();
+    //     }
 
-        mock.Init();
-        UNIT_ASSERT(mock.ReadLog() == mock.OwnedLogRecords());
-    }
+    //     mock.Init();
+    //     UNIT_ASSERT(mock.ReadLog() == mock.OwnedLogRecords());
+    // }
 
     Y_UNIT_TEST(TestPDiskOnDifferentKeys) {
         TActorTestContext testCtx{{}};

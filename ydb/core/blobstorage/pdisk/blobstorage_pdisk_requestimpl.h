@@ -555,14 +555,20 @@ public:
 //
 // TChunkWritePiece
 //
-class TChunkWritePiece : public TRequestBase {
+class TChunkWriteResult;
+
+class TChunkWritePiece : public TRequestBase, public IObjectInQueue {
+private:
+    TPDisk *PDisk;
 public:
     TIntrusivePtr<TChunkWrite> ChunkWrite;
     ui32 PieceShift;
     ui32 PieceSize;
+    THolder<TChunkWriteResult> ChunkWriteResult;
 
-    TChunkWritePiece(TIntrusivePtr<TChunkWrite> &write, ui32 pieceShift, ui32 pieceSize, NWilson::TSpan span)
+    TChunkWritePiece(TPDisk *pdisk, TIntrusivePtr<TChunkWrite> &write, ui32 pieceShift, ui32 pieceSize, NWilson::TSpan span)
         : TRequestBase(write->Sender, write->ReqId, write->Owner, write->OwnerRound, write->PriorityClass, std::move(span))
+        , PDisk(pdisk)
         , ChunkWrite(write)
         , PieceShift(pieceShift)
         , PieceSize(pieceSize)
@@ -584,6 +590,8 @@ public:
             ChunkWrite->AbortPiece(actorSystem);
         }
     }
+    
+    void Process(void*) override;
 };
 
 //

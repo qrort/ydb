@@ -42,6 +42,12 @@ LWTRACE_USING(BLOBSTORAGE_PROVIDER);
 
 class TCompletionEventSender;
 
+class TChunkWriteResult {
+public:
+    THolder <TChunkWriter> ChunkWriter;
+    bool LastPart;
+    TChunkWriteResult(THolder<TChunkWriter>&& chunkWriter, bool lastPart) : ChunkWriter(std::move(chunkWriter)), LastPart(lastPart) {}
+};
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // TPDisk
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -82,6 +88,8 @@ public:
 
     TVector<TRequestBase*> JointLogReads;
     std::queue<TIntrusivePtr<TRequestBase>> JointChunkReads;
+    TThreadPool ChunkEncoder;
+    TMutex ChunkWriteQueueMutex;
     std::queue<TRequestBase*> JointChunkWrites;
     std::queue<TLogWrite*> JointLogWrites;
     TVector<TChunkTrim*> JointChunkTrims;
@@ -153,7 +161,7 @@ public:
     ui64 InsaneLogChunks = 0;  // Set when pdisk sees insanely large log, to give vdisks a chance to cut it
     ui32 FirstLogChunkToParseCommits = 0;
 
-    // DO NOT CHANGE STATE NUMBERS, NUMBERS ARE USED TO ENCODE THE STATE IN A FUTURE-PROOF WAY
+    // DO NOT CHANGE STATE NUMBERS, NUMBERS ARE USED TO ENCODE THE `STATE IN A FUTURE-PROOF WAY
     enum EShredState {
         EShredStateDefault = 0,
         EShredStateSendPreShredCompactVDisk = 1,
@@ -313,7 +321,8 @@ public:
         bool parseCommitMessage);
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
     // Chunk writing
-    bool ChunkWritePiece(TChunkWrite *evChunkWrite, ui32 pieceShift, ui32 pieceSize);
+    void PushChunkWrite(TChunkWritePiece *piece);
+    TChunkWriteResult ChunkWritePiece(TChunkWrite *evChunkWrite, ui32 pieceShift, ui32 pieceSize);
     void ChunkWritePiecePlain(TChunkWrite *evChunkWrite);
     bool ChunkWritePieceEncrypted(TChunkWrite *evChunkWrite, TChunkWriter &writer, ui32 bytesAvailable);
     void SendChunkWriteError(TChunkWrite &evChunkWrite, const TString &errorReason, NKikimrProto::EReplyStatus status);

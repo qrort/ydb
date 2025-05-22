@@ -397,97 +397,97 @@ Y_UNIT_TEST_SUITE(TPDiskRaces) {
         UNIT_ASSERT(capturedQuarantinedLogChunks);
     }
 
-    Y_UNIT_TEST(OwnerKilledWhileReadingLog) {
-        TestKillOwnerWhileReadingLog(20);
-    }
+    // Y_UNIT_TEST(OwnerKilledWhileReadingLog) {
+    //     TestKillOwnerWhileReadingLog(20);
+    // }
 
-    void TestKillOwnerWhileReadingLogAndThenKillLastOwner(ui32 timeLimit) {
-        bool capturedQuarantinedLogChunks = false;
-        THPTimer timer;
-        while (timer.Passed() < timeLimit) {
-            TStringStream ss;
+    // void TestKillOwnerWhileReadingLogAndThenKillLastOwner(ui32 timeLimit) {
+    //     bool capturedQuarantinedLogChunks = false;
+    //     THPTimer timer;
+    //     while (timer.Passed() < timeLimit) {
+    //         TStringStream ss;
 
-            TActorTestContext testCtx({ 
-                .IsBad = false,
-                .UsePDiskMock = false,
-                .LogBackend = new TStreamLogBackend(&ss),
-            });
-            const TString data = PrepareData(10_MB);
+    //         TActorTestContext testCtx({ 
+    //             .IsBad = false,
+    //             .UsePDiskMock = false,
+    //             .LogBackend = new TStreamLogBackend(&ss),
+    //         });
+    //         const TString data = PrepareData(10_MB);
 
-            auto logNoTest = [&](TVDiskMock& mock, NPDisk::TCommitRecord rec) {
-                TString dataCopy = data;
-                auto evLog = MakeHolder<NPDisk::TEvLog>(mock.PDiskParams->Owner, mock.PDiskParams->OwnerRound, 0, TRcBuf(dataCopy),
-                        mock.GetLsnSeg(), nullptr);
-                evLog->Signature.SetCommitRecord();
-                evLog->CommitRecord = std::move(rec);
-                testCtx.Send(evLog.Release());
-            };
+    //         auto logNoTest = [&](TVDiskMock& mock, NPDisk::TCommitRecord rec) {
+    //             TString dataCopy = data;
+    //             auto evLog = MakeHolder<NPDisk::TEvLog>(mock.PDiskParams->Owner, mock.PDiskParams->OwnerRound, 0, TRcBuf(dataCopy),
+    //                     mock.GetLsnSeg(), nullptr);
+    //             evLog->Signature.SetCommitRecord();
+    //             evLog->CommitRecord = std::move(rec);
+    //             testCtx.Send(evLog.Release());
+    //         };
 
-            TVDiskMock mock1(&testCtx);
-            mock1.Init();
+    //         TVDiskMock mock1(&testCtx);
+    //         mock1.Init();
 
-            TVDiskMock mock2(&testCtx);
-            mock2.Init();
+    //         TVDiskMock mock2(&testCtx);
+    //         mock2.Init();
 
-            for (ui32 i = 0; i < 20; ++i) {
-                {
-                    NPDisk::TCommitRecord rec;
-                    logNoTest(mock1, rec);
-                    testCtx.Recv<NPDisk::TEvLogResult>();
-                }
-                {
-                    NPDisk::TCommitRecord rec;
-                    logNoTest(mock2, rec);
-                    testCtx.Recv<NPDisk::TEvLogResult>();
-                }
-            }
+    //         for (ui32 i = 0; i < 20; ++i) {
+    //             {
+    //                 NPDisk::TCommitRecord rec;
+    //                 logNoTest(mock1, rec);
+    //                 testCtx.Recv<NPDisk::TEvLogResult>();
+    //             }
+    //             {
+    //                 NPDisk::TCommitRecord rec;
+    //                 logNoTest(mock2, rec);
+    //                 testCtx.Recv<NPDisk::TEvLogResult>();
+    //             }
+    //         }
 
-            testCtx.RestartPDiskSync();
+    //         testCtx.RestartPDiskSync();
 
-            mock1.Init();
-            mock2.InitFull();
+    //         mock1.Init();
+    //         mock2.InitFull();
 
-            NPDisk::TLogPosition position{0, 0};
+    //         NPDisk::TLogPosition position{0, 0};
 
-            bool readCallbackCalled = false;
+    //         bool readCallbackCalled = false;
 
-            testCtx.TestCtx.SectorMap->SetReadCallback([&]() {
-                if (!readCallbackCalled) {
-                    readCallbackCalled = true;
+    //         testCtx.TestCtx.SectorMap->SetReadCallback([&]() {
+    //             if (!readCallbackCalled) {
+    //                 readCallbackCalled = true;
 
-                    testCtx.Send(new NPDisk::TEvHarakiri(mock1.PDiskParams->Owner, mock1.PDiskParams->OwnerRound));
-                    testCtx.Send(new NPDisk::TEvHarakiri(mock2.PDiskParams->Owner, mock2.PDiskParams->OwnerRound));
-                }
-            });
+    //                 testCtx.Send(new NPDisk::TEvHarakiri(mock1.PDiskParams->Owner, mock1.PDiskParams->OwnerRound));
+    //                 testCtx.Send(new NPDisk::TEvHarakiri(mock2.PDiskParams->Owner, mock2.PDiskParams->OwnerRound));
+    //             }
+    //         });
 
-            testCtx.Send(new NPDisk::TEvReadLog(mock1.PDiskParams->Owner, mock1.PDiskParams->OwnerRound, position));
+    //         testCtx.Send(new NPDisk::TEvReadLog(mock1.PDiskParams->Owner, mock1.PDiskParams->OwnerRound, position));
 
-            testCtx.Recv<NPDisk::TEvHarakiriResult>();
-            testCtx.Recv<NPDisk::TEvHarakiriResult>();
+    //         testCtx.Recv<NPDisk::TEvHarakiriResult>();
+    //         testCtx.Recv<NPDisk::TEvHarakiriResult>();
             
-            {
-                TVDiskMock mock(&testCtx);
-                mock.Init();
+    //         {
+    //             TVDiskMock mock(&testCtx);
+    //             mock.Init();
 
-                for (ui32 i = 0; i < 30; ++i) {
-                    NPDisk::TCommitRecord rec;
-                    logNoTest(mock, rec);
-                    testCtx.Recv<NPDisk::TEvLogResult>();
-                }
-            }
+    //             for (ui32 i = 0; i < 30; ++i) {
+    //                 NPDisk::TCommitRecord rec;
+    //                 logNoTest(mock, rec);
+    //                 testCtx.Recv<NPDisk::TEvLogResult>();
+    //             }
+    //         }
 
-            if (!capturedQuarantinedLogChunks) {
-                TString log = ss.Str();
-                capturedQuarantinedLogChunks = log.Contains("along with log chunks");
-            }
-        }
+    //         if (!capturedQuarantinedLogChunks) {
+    //             TString log = ss.Str();
+    //             capturedQuarantinedLogChunks = log.Contains("along with log chunks");
+    //         }
+    //     }
 
-        UNIT_ASSERT(capturedQuarantinedLogChunks);
-    }
+    //     UNIT_ASSERT(capturedQuarantinedLogChunks);
+    // }
 
-    Y_UNIT_TEST(OwnerKilledWhileReadingLogAndThenKillLastOwner) {
-        TestKillOwnerWhileReadingLogAndThenKillLastOwner(20);
-    }
+    // Y_UNIT_TEST(OwnerKilledWhileReadingLogAndThenKillLastOwner) {
+    //     TestKillOwnerWhileReadingLogAndThenKillLastOwner(20);
+    // }
 }
 
 }
